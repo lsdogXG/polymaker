@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POLYMARKET ARB TERMINAL v2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #05070A;
+      --bg-secondary: #0B0F14;
+      --bg-card: #0D1117;
+      --neon-cyan: #47D7FF;
+      --neon-green: #39FF14;
+      --neon-red: #FF4D4D;
+      --neon-orange: #F7931A;
+      --neon-purple: #9945FF;
+      --neon-blue: #627EEA;
+      --text-secondary: #7F8A96;
+      --text-primary: #E6EEF7;
+      --border-color: rgba(71, 215, 255, 0.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body, #root {
+      height: 100%;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+
+    .scanlines::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 9999;
+      background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15) 0px, rgba(0, 0, 0, 0.15) 1px, transparent 1px, transparent 2px);
+    }
+
+    .terminal-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 0 10px rgba(71, 215, 255, 0.2);
+      margin-bottom: 12px;
+    }
+
+    .panel-header {
+      color: var(--neon-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      font-weight: 600;
+      font-size: 0.7rem;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-content { padding: 12px; }
+
+    /* Asset Tabs */
+    .asset-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .asset-tab {
+      flex: 1;
+      padding: 12px;
+      background: var(--bg-secondary);
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .asset-tab:hover { border-color: var(--border-color); }
+    .asset-tab.active { border-color: var(--neon-cyan); box-shadow: 0 0 15px rgba(71, 215, 255, 0.3); }
+    .asset-tab.btc.active { border-color: var(--neon-orange); box-shadow: 0 0 15px rgba(247, 147, 26, 0.3); }
+    .asset-tab.eth.active { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(98, 126, 234, 0.3); }
+    .asset-tab.sol.active { border-color: var(--neon-purple); box-shadow: 0 0 15px rgba(153, 69, 255, 0.3); }
+    .asset-tab.offline { opacity: 0.4; }
+
+    .asset-name { font-size: 1.1rem; font-weight: bold; margin-bottom: 4px; }
+    .asset-tab.btc .asset-name { color: var(--neon-orange); }
+    .asset-tab.eth .asset-name { color: var(--neon-blue); }
+    .asset-tab.sol .asset-name { color: var(--neon-purple); }
+    .asset-tab.xrp .asset-name { color: var(--text-primary); }
+
+    /* Countdown */
+    .countdown-bar {
+      height: 4px;
+      background: var(--bg-secondary);
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .countdown-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--neon-green), var(--neon-cyan));
+      transition: width 1s linear;
+    }
+    .countdown-fill.urgent { background: linear-gradient(90deg, var(--neon-red), var(--neon-orange)); }
+
+    /* Orderbook */
+    .orderbook-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .orderbook-side { }
+    .orderbook-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .orderbook-title.yes { color: var(--neon-green); }
+    .orderbook-title.no { color: var(--neon-red); }
+
+    .orderbook-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      padding: 2px 0;
+      position: relative;
+    }
+    .orderbook-row .bar {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      opacity: 0.2;
+    }
+    .orderbook-row.bid .bar { background: var(--neon-green); }
+    .orderbook-row.ask .bar { background: var(--neon-red); }
+
+    /* Data Grid */
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border-color);
+    }
+    .data-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .data-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+    .data-cell {
+      background: var(--bg-primary);
+      padding: 8px;
+    }
+    .data-label {
+      color: var(--text-secondary);
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    .data-value {
+      font-size: 1rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Signal Table */
+    .signal-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.7rem;
+    }
+    .signal-table th {
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-size: 0.6rem;
+      font-weight: 500;
+      text-align: left;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .signal-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(71, 215, 255, 0.1);
+    }
+
+    /* Stats Footer */
+    .stats-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 8px 12px;
+      font-size: 0.65rem;
+      border-top: 1px solid var(--border-color);
+    }
+    .stat-item { display: flex; align-items: center; gap: 6px; }
+    .stat-label { color: var(--text-secondary); text-transform: uppercase; }
+    .stat-value { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--neon-green);
+      box-shadow: 0 0 6px var(--neon-green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .status-dot.disconnected { background: var(--neon-red); box-shadow: 0 0 6px var(--neon-red); }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    /* Utility Classes */
+    .text-cyan { color: var(--neon-cyan); }
+    .text-green { color: var(--neon-green); }
+    .text-red { color: var(--neon-red); }
+    .text-muted { color: var(--text-secondary); }
+    .text-orange { color: var(--neon-orange); }
+    .glow-green { text-shadow: 0 0 8px rgba(57, 255, 20, 0.5); }
+    .glow-red { text-shadow: 0 0 8px rgba(255, 77, 77, 0.5); }
+    .glow-cyan { text-shadow: 0 0 8px rgba(71, 215, 255, 0.5); }
+
+    .flex { display: flex; }
+    .justify-between { justify-content: space-between; }
+    .items-center { align-items: center; }
+    .gap-2 { gap: 8px; }
+    .gap-4 { gap: 16px; }
+    .text-xs { font-size: 0.75rem; }
+    .text-sm { font-size: 0.875rem; }
+    .font-bold { font-weight: 700; }
+    .uppercase { text-transform: uppercase; }
+    .tabular { font-variant-numeric: tabular-nums; }
+
+    /* Strategy Info */
+    .strategy-box {
+      background: rgba(71, 215, 255, 0.05);
+      border: 1px solid var(--border-color);
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .strategy-title {
+      color: var(--neon-cyan);
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .strategy-text {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .strategy-text strong { color: var(--text-primary); }
+    .strategy-text .highlight { color: var(--neon-green); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .asset-tabs { flex-wrap: wrap; }
+      .asset-tab { flex: 1 1 45%; }
+    }
+    @media (max-width: 900px) {
+      .market-cards-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    }
+    @media (max-width: 768px) {
+      .asset-tab { flex: 1 1 100%; }
+      .orderbook-container { grid-template-columns: 1fr; }
+      .data-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .market-cards-grid { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+    // ========================================
+    // WEBSOCKET HOOK
+    // ========================================
+    function useWebSocket(url) {
+      const [data, setData] = useState(null);
+      const [status, setStatus] = useState('disconnected');
+      const wsRef = useRef(null);
+      const reconnectRef = useRef(null);
+
+      useEffect(() => {
+        let mounted = true;
+
+        function connect() {
+          if (wsRef.current?.readyState === WebSocket.OPEN) return;
+          setStatus('connecting');
+          const ws = new WebSocket(url);
+
+          ws.onopen = () => mounted && setStatus('connected');
+          ws.onmessage = (e) => {
+            if (!mounted) return;
+            try {
+              const parsed = JSON.parse(e.data);
+              if (parsed.type !== 'ping') setData(parsed);
+            } catch (err) {}
+          };
+          ws.onclose = () => {
+            if (mounted) {
+              setStatus('disconnected');
+              reconnectRef.current = setTimeout(connect, 2000);
+            }
+          };
+          ws.onerror = () => ws.close();
+          wsRef.current = ws;
+        }
+
+        connect();
+
+        return () => {
+          mounted = false;
+          if (reconnectRef.current) clearTimeout(reconnectRef.current);
+          if (wsRef.current) {
+            wsRef.current.onclose = null;
+            wsRef.current.close();
+          }
+        };
+      }, [url]);
+
+      return { data, status };
+    }
+
+    // ========================================
+    // UTILITY FUNCTIONS
+    // ========================================
+    function formatNumber(num, decimals = 2) {
+      if (num === null || num === undefined || isNaN(num)) return '—';
+      return Number(num).toFixed(decimals);
+    }
+
+    function formatPrice(num) {
+      if (num === null || num === undefined || isNaN(num)) return '—';
+      return '$' + Number(num).toFixed(4);
+    }
+
+    function formatUptime(seconds) {
+      if (!seconds) return '00:00:00';
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function getRoundInfo() {
+      const now = Math.floor(Date.now() / 1000);
+      const windowStart = Math.floor(now / 900) * 900;
+      const windowEnd = windowStart + 900;
+      const elapsed = now - windowStart;
+      const remaining = windowEnd - now;
+      const progress = (elapsed / 900) * 100;
+      return { windowStart, windowEnd, elapsed, remaining, progress };
+    }
+
+    // ========================================
+    // COUNTDOWN TIMER
+    // ========================================
+    function CountdownTimer({ roundData }) {
+      const [localRound, setLocalRound] = useState(getRoundInfo());
+      const [lastWindowStart, setLastWindowStart] = useState(getRoundInfo().windowStart);
+
+      useEffect(() => {
+        const interval = setInterval(() => {
+          const newRound = getRoundInfo();
+          setLocalRound(newRound);
+
+          // Detect round change and auto-refresh
+          if (newRound.windowStart !== lastWindowStart) {
+            console.log('New round detected, refreshing page...');
+            setLastWindowStart(newRound.windowStart);
+            // Delay refresh by 2 seconds to allow backend to update
+            setTimeout(() => {
+              window.location.reload();
+            }, 2000);
+          }
+        }, 1000);
+        return () => clearInterval(interval);
+      }, [lastWindowStart]);
+
+      // Use server data if available, otherwise local calculation
+      const remaining = roundData?.remaining_sec ?? localRound.remaining;
+      const minutes = Math.floor(remaining / 60);
+      const seconds = Math.floor(remaining % 60);
+      const isLocked = roundData?.locked || remaining <= 30;
+      const isUrgent = remaining < 60;
+      const progress = ((900 - remaining) / 900) * 100;
+
+      return (
+        <div className="terminal-panel" style={{ borderColor: isLocked ? 'var(--neon-red)' : undefined }}>
+          <div className="panel-header">
+            <span>⏱ ROUND TIMER</span>
+            <div className="flex items-center gap-2">
+              {isLocked && (
+                <span className="text-red glow-red" style={{ fontSize: '0.7rem' }}>
+                  🔒 TRADING LOCKED
+                </span>
+              )}
+              <span className={`tabular ${isLocked ? 'text-red glow-red' : isUrgent ? 'text-orange' : 'text-cyan'}`}>
+                {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')} REMAINING
+              </span>
+            </div>
+          </div>
+          <div style={{ padding: '8px 12px' }}>
+            <div className="countdown-bar">
+              <div
+                className={`countdown-fill ${isLocked ? 'urgent' : isUrgent ? 'urgent' : ''}`}
+                style={{ width: `${100 - progress}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs text-muted" style={{ marginTop: '6px' }}>
+              <span>Round: {new Date(localRound.windowStart * 1000).toLocaleTimeString()}</span>
+              <span>Ends: {new Date(localRound.windowEnd * 1000).toLocaleTimeString()}</span>
+              {isLocked && <span className="text-red">NO NEW TRADES</span>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // MARKET CARDS GRID - 显示所有4个市场的关键指标
+    // ========================================
+    function MarketCardsGrid({ markets, prices, selected, onSelect, roundLocked }) {
+      const assets = ['BTC', 'ETH', 'SOL', 'XRP'];
+      const assetColors = {
+        BTC: 'var(--neon-orange)',
+        ETH: 'var(--neon-blue)',
+        SOL: 'var(--neon-purple)',
+        XRP: 'var(--text-primary)'
+      };
+
+      // Format crypto price based on value magnitude
+      const formatCryptoPrice = (price) => {
+        if (!price || price === 0) return '—';
+        if (price >= 1000) return '$' + Number(price).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        if (price >= 1) return '$' + Number(price).toFixed(2);
+        return '$' + Number(price).toFixed(4);
+      };
+
+      return (
+        <div className="market-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '12px' }}>
+          {assets.map(asset => {
+            const m = markets?.[asset] || {};
+            const p = prices?.[asset] || {};
+            const isActive = m.active;
+            const isLocked = m.round_locked || roundLocked;
+            const spread = m.spread || 0;
+            const hasArb = spread > 0.005;
+            const isSelected = selected === asset;
+            const hasData = m.yes_price > 0 || m.no_price > 0;
+            const hasPriceData = p.binance?.price > 0 || p.current > 0;
+            const priceChange = p.change_pct || 0;
+            const isUp = priceChange >= 0;
+
+            return (
+              <div
+                key={asset}
+                className="terminal-panel"
+                onClick={() => onSelect(asset)}
+                style={{
+                  cursor: 'pointer',
+                  borderColor: isSelected ? assetColors[asset] : isLocked ? 'var(--neon-red)' : undefined,
+                  boxShadow: isSelected ? `0 0 15px ${assetColors[asset]}40` : undefined,
+                  opacity: !isActive && !hasData ? 0.5 : 1,
+                  marginBottom: 0,
+                }}
+              >
+                {/* Header with Price */}
+                <div className="panel-header" style={{ padding: '6px 10px' }}>
+                  <span style={{ color: assetColors[asset], fontWeight: 'bold' }}>{asset}</span>
+                  <span style={{ fontSize: '0.6rem' }} className={isActive ? 'text-green' : 'text-orange'}>
+                    {isLocked ? '🔒' : isActive ? '●' : '○'}
+                  </span>
+                </div>
+
+                {/* Triple Price Display - Chainlink + Binance + Anchor */}
+                {(p.chainlink?.price > 0 || p.binance?.price > 0) && (
+                  <div style={{
+                    padding: '6px 8px',
+                    background: 'var(--bg-secondary)',
+                    borderBottom: '1px solid var(--border-color)',
+                    fontSize: '0.6rem'
+                  }}>
+                    {/* Price to Beat (Anchor) */}
+                    <div style={{
+                      background: 'rgba(71, 215, 255, 0.1)',
+                      padding: '4px 6px',
+                      marginBottom: '4px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      border: '1px solid var(--border-color)'
+                    }}>
+                      <span className="text-cyan" style={{ fontWeight: 'bold' }}>BEAT</span>
+                      <span style={{ color: assetColors[asset], fontWeight: 'bold', fontSize: '0.8rem' }}>
+                        {formatCryptoPrice(p.anchor?.price || 0)}
+                      </span>
+                      <span className={`tabular ${isUp ? 'text-green glow-green' : 'text-red glow-red'}`} style={{ fontSize: '0.7rem' }}>
+                        {isUp ? '▲' : '▼'} {formatNumber(Math.abs(priceChange), 3)}%
+                      </span>
+                    </div>
+
+                    {/* Chainlink Price */}
+                    {p.chainlink?.price > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                        <span className="text-muted">CHAINLINK</span>
+                        <span className="tabular" style={{ color: assetColors[asset] }}>
+                          {formatCryptoPrice(p.chainlink.price)}
+                        </span>
+                        <span className="text-cyan tabular">{p.chainlink.latency_ms}ms</span>
+                      </div>
+                    )}
+
+                    {/* Binance Direct Price */}
+                    {p.binance?.price > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                        <span className="text-muted">BINANCE</span>
+                        <span className="tabular" style={{ color: 'var(--text-primary)' }}>
+                          {formatCryptoPrice(p.binance.price)}
+                        </span>
+                        <span className="text-cyan tabular">{p.binance.latency_ms}ms</span>
+                      </div>
+                    )}
+
+                    {/* RTDS Binance (Polymarket relay) */}
+                    {p.rtds_binance?.price > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="text-muted">RTDS</span>
+                        <span className="tabular" style={{ color: 'var(--text-muted)' }}>
+                          {formatCryptoPrice(p.rtds_binance.price)}
+                        </span>
+                        <span className={`tabular ${p.polymarket_lag_ms > 500 ? 'text-red' : 'text-orange'}`}>
+                          +{p.polymarket_lag_ms || 0}ms lag
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Content */}
+                <div style={{ padding: '8px 10px' }}>
+                  {isActive || hasData ? (
+                    <>
+                      {/* YES / NO Prices */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <div>
+                          <div className="text-muted" style={{ fontSize: '0.55rem', textTransform: 'uppercase' }}>YES</div>
+                          <div className="text-green tabular" style={{ fontSize: '0.85rem' }}>
+                            ${formatNumber(m.yes_price, 4)}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div className="text-muted" style={{ fontSize: '0.55rem', textTransform: 'uppercase' }}>NO</div>
+                          <div className="text-red tabular" style={{ fontSize: '0.85rem' }}>
+                            ${formatNumber(m.no_price, 4)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Combined */}
+                      <div style={{
+                        background: 'var(--bg-primary)',
+                        padding: '6px 8px',
+                        marginBottom: '6px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span className="text-muted" style={{ fontSize: '0.6rem' }}>COMBINED</span>
+                        <span className={`tabular font-bold ${m.combined < 1 ? 'text-green' : 'text-red'}`}>
+                          ${formatNumber(m.combined, 4)}
+                        </span>
+                      </div>
+
+                      {/* ARB Opportunity with Fee Breakdown */}
+                      <div style={{
+                        background: (m.net_arb_pct > 0) && !isLocked ? 'rgba(57, 255, 20, 0.1)' : 'var(--bg-primary)',
+                        padding: '6px 8px',
+                        border: (m.net_arb_pct > 0) && !isLocked ? '1px solid var(--neon-green)' : 'none'
+                      }}>
+                        {isLocked ? (
+                          <div style={{ textAlign: 'center' }}>
+                            <span className="text-red" style={{ fontSize: '0.75rem' }}>🔒 LOCKED</span>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Gross ARB */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                              <span className="text-muted" style={{ fontSize: '0.55rem' }}>GROSS</span>
+                              <span className={`tabular ${spread >= 0 ? 'text-green' : 'text-red'}`} style={{ fontSize: '0.7rem' }}>
+                                {spread >= 0 ? '+' : ''}{formatNumber(spread * 100, 2)}%
+                              </span>
+                            </div>
+                            {/* Fee */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                              <span className="text-muted" style={{ fontSize: '0.55rem' }}>FEE</span>
+                              <span className="tabular text-orange" style={{ fontSize: '0.7rem' }}>
+                                -{formatNumber(m.total_fee_pct || 0, 2)}%
+                              </span>
+                            </div>
+                            {/* Net ARB */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '3px' }}>
+                              <span className="text-cyan font-bold" style={{ fontSize: '0.6rem' }}>NET</span>
+                              <span
+                                className={`tabular font-bold ${(m.net_arb_pct > 0) ? 'text-green glow-green' : 'text-red'}`}
+                                style={{ fontSize: '0.85rem' }}
+                              >
+                                {(m.net_arb_pct >= 0) ? '+' : ''}{formatNumber(m.net_arb_pct || 0, 2)}%
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Depth Analysis ($1000 VWAP) */}
+                      {(m.yes_vwap_1000 > 0 || m.no_vwap_1000 > 0) && (
+                        <div style={{
+                          background: 'var(--bg-primary)',
+                          padding: '4px 8px',
+                          marginTop: '4px',
+                          fontSize: '0.55rem'
+                        }}>
+                          <div className="text-muted" style={{ marginBottom: '2px' }}>$1K VWAP:</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span className="text-green tabular">Y: ${formatNumber(m.yes_vwap_1000, 3)}</span>
+                            <span className="text-red tabular">N: ${formatNumber(m.no_vwap_1000, 3)}</span>
+                            <span className="text-cyan tabular">
+                              =${formatNumber((m.yes_vwap_1000 || 0) + (m.no_vwap_1000 || 0), 3)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Book Age */}
+                      <div className="text-muted" style={{ fontSize: '0.5rem', marginTop: '4px', textAlign: 'center' }}>
+                        {m.book_age_ms ? `${m.book_age_ms}ms` : '—'}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                      <span className="text-orange" style={{ fontSize: '0.75rem' }}>⏳ WAITING</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Indicator */}
+                {isSelected && (
+                  <div style={{
+                    height: '2px',
+                    background: assetColors[asset],
+                    boxShadow: `0 0 8px ${assetColors[asset]}`
+                  }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ========================================
+    // ORDERBOOK DETAIL - 只显示订单簿（价格信息已在卡片中）
+    // ========================================
+    function OrderbookDetail({ asset, marketData, orderbook }) {
+      const m = marketData || {};
+      const isActive = m.active;
+      const hasData = m.yes_price > 0 || m.no_price > 0;
+
+      // Orderbook levels
+      const yesAsks = orderbook?.yes_asks || [];
+      const yesBids = orderbook?.yes_bids || [];
+      const noAsks = orderbook?.no_asks || [];
+      const noBids = orderbook?.no_bids || [];
+      const hasOrderbook = yesAsks.length > 0 || yesBids.length > 0 || noAsks.length > 0 || noBids.length > 0;
+
+      const maxSize = Math.max(
+        ...yesAsks.map(l => l[1] || 0),
+        ...yesBids.map(l => l[1] || 0),
+        ...noAsks.map(l => l[1] || 0),
+        ...noBids.map(l => l[1] || 0),
+        1
+      );
+
+      const assetColors = {
+        BTC: 'var(--neon-orange)',
+        ETH: 'var(--neon-blue)',
+        SOL: 'var(--neon-purple)',
+        XRP: 'var(--text-primary)'
+      };
+
+      // No data state
+      if (!isActive && !hasData) {
+        return null;  // 卡片已经显示等待状态
+      }
+
+      if (!hasOrderbook) {
+        return null;  // 没有订单簿数据时不显示
+      }
+
+      return (
+        <div className="terminal-panel" style={{ borderColor: assetColors[asset] }}>
+          <div className="panel-header">
+            <span style={{ color: assetColors[asset] }}>{asset} ORDERBOOK</span>
+            <span className="text-muted text-xs">Click other asset to switch</span>
+          </div>
+          <div className="panel-content">
+            <div className="orderbook-container">
+              <div className="orderbook-side">
+                <div className="orderbook-title yes">YES (UP)</div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>PRICE</span><span>SIZE</span>
+                </div>
+                {yesAsks.slice(0, 6).reverse().map((level, i) => (
+                  <div key={`ask-${i}`} className="orderbook-row ask">
+                    <div className="bar" style={{ width: `${(level[1] / maxSize) * 100}%` }} />
+                    <span className="text-red tabular">{formatNumber(level[0], 4)}</span>
+                    <span className="text-muted tabular">{formatNumber(level[1], 0)}</span>
+                  </div>
+                ))}
+                <div style={{ borderTop: '2px solid var(--neon-green)', margin: '4px 0' }} />
+                {yesBids.slice(0, 6).map((level, i) => (
+                  <div key={`bid-${i}`} className="orderbook-row bid">
+                    <div className="bar" style={{ width: `${(level[1] / maxSize) * 100}%` }} />
+                    <span className="text-green tabular">{formatNumber(level[0], 4)}</span>
+                    <span className="text-muted tabular">{formatNumber(level[1], 0)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="orderbook-side">
+                <div className="orderbook-title no">NO (DOWN)</div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>PRICE</span><span>SIZE</span>
+                </div>
+                {noAsks.slice(0, 6).reverse().map((level, i) => (
+                  <div key={`ask-${i}`} className="orderbook-row ask">
+                    <div className="bar" style={{ width: `${(level[1] / maxSize) * 100}%` }} />
+                    <span className="text-red tabular">{formatNumber(level[0], 4)}</span>
+                    <span className="text-muted tabular">{formatNumber(level[1], 0)}</span>
+                  </div>
+                ))}
+                <div style={{ borderTop: '2px solid var(--neon-red)', margin: '4px 0' }} />
+                {noBids.slice(0, 6).map((level, i) => (
+                  <div key={`bid-${i}`} className="orderbook-row bid">
+                    <div className="bar" style={{ width: `${(level[1] / maxSize) * 100}%` }} />
+                    <span className="text-green tabular">{formatNumber(level[0], 4)}</span>
+                    <span className="text-muted tabular">{formatNumber(level[1], 0)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Slug info */}
+            <div className="text-xs text-muted" style={{ marginTop: '8px', textAlign: 'center' }}>
+              {m.slug || '—'}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // STRATEGY INFO PANEL
+    // ========================================
+    function StrategyInfoPanel() {
+      const [expanded, setExpanded] = useState(false);
+
+      return (
+        <div className="terminal-panel">
+          <div className="panel-header" style={{ cursor: 'pointer' }} onClick={() => setExpanded(!expanded)}>
+            <span>📊 CURRENT STRATEGY</span>
+            <span className="text-muted">{expanded ? '▼' : '▶'} Click to {expanded ? 'collapse' : 'expand'}</span>
+          </div>
+          {expanded && (
+            <div className="panel-content">
+              <div className="strategy-box">
+                <div className="strategy-title">🎯 FULLSET STRATEGY (Primary)</div>
+                <div className="strategy-text">
+                  <strong>Condition:</strong> YES + NO &lt; <span className="highlight">$0.948</span> (1 - 5% buffer - 0.2% fee)<br/>
+                  <strong>Action:</strong> Buy both YES and NO tokens simultaneously using <span className="highlight">FOK</span> orders<br/>
+                  <strong>Profit:</strong> When round ends, one token = $1, other = $0. Total cost &lt; $1 = guaranteed profit<br/>
+                  <strong>Sizing:</strong> Exponential search (10→20→40→...) to find max profitable size within orderbook depth
+                </div>
+              </div>
+
+              <div className="strategy-box">
+                <div className="strategy-title">⚡ SINGLE_LEG STRATEGY (New Market)</div>
+                <div className="strategy-text">
+                  <strong>Condition:</strong> Within <span className="highlight">60 seconds</span> of market creation, one side &lt; <span className="highlight">$0.02</span><br/>
+                  <strong>Action:</strong> Buy cheap side (FOK), then place GTD limit order for hedge<br/>
+                  <strong>Timeout:</strong> Hedge order expires after 25 seconds
+                </div>
+              </div>
+
+              <div className="strategy-box">
+                <div className="strategy-title">🛡️ RISK CONTROLS</div>
+                <div className="strategy-text">
+                  • Max per trade: <span className="highlight">$200</span> | Per market: <span className="highlight">$500</span> | Total: <span className="highlight">$2,000</span><br/>
+                  • Daily loss circuit breaker: <span className="highlight">$100</span><br/>
+                  • Stale orderbook skip: <span className="highlight">&gt;1.5s</span> old<br/>
+                  • Volatility filter: Skip if 3h volatility &gt; <span className="highlight">15%</span><br/>
+                  • Stop loss: Exit at <span className="highlight">-5%</span><br/>
+                  • Trade cooldown: <span className="highlight">30s</span> | Max hold: <span className="highlight">15 min</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // SIGNALS PANEL
+    // ========================================
+    function SignalsPanel({ signals, selectedAsset }) {
+      const sigList = (signals || []).filter(s => !selectedAsset || selectedAsset === 'ALL' || s.asset === selectedAsset);
+      const validCount = sigList.filter(s => s.arb_pct > 0).length;
+
+      return (
+        <div className="terminal-panel">
+          <div className="panel-header">
+            <span>STRATEGY SIGNALS {selectedAsset && selectedAsset !== 'ALL' ? `(${selectedAsset})` : '(ALL)'}</span>
+            {validCount > 0 && <span className="text-green glow-green">🔥 {validCount} VALID</span>}
+          </div>
+          <div className="panel-content" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            {sigList.length === 0 ? (
+              <div className="text-center text-muted" style={{ padding: '16px' }}>
+                Monitoring for arbitrage opportunities...
+              </div>
+            ) : (
+              <table className="signal-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Asset</th>
+                    <th>Type</th>
+                    <th>Combined</th>
+                    <th>ARB %</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sigList.slice().reverse().slice(0, 20).map((sig, i) => {
+                    const isValid = sig.arb_pct > 0;
+                    const isHot = sig.arb_pct > 1;
+                    return (
+                      <tr key={i} style={{ opacity: isValid ? 1 : 0.5 }}>
+                        <td className="text-muted">{sig.time?.split(' ')[1] || sig.time}</td>
+                        <td className="text-cyan">{sig.asset}</td>
+                        <td className={isValid ? 'text-cyan' : 'text-muted'}>{sig.type}</td>
+                        <td className={sig.combined < 1 ? 'text-green' : 'text-red'}>
+                          ${formatNumber(sig.combined, 4)}
+                        </td>
+                        <td className={isHot ? 'text-green glow-green' : isValid ? 'text-cyan' : 'text-red'}>
+                          {sig.arb_pct >= 0 ? '+' : ''}{formatNumber(sig.arb_pct, 2)}%
+                        </td>
+                        <td>
+                          {isHot ? <span className="text-green">🔥 HOT</span> :
+                           isValid ? <span className="text-cyan">✓ OK</span> :
+                           <span className="text-muted">—</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // TRANSACTIONS PANEL
+    // ========================================
+    function TransactionsPanel({ transactions }) {
+      const txList = transactions || [];
+
+      return (
+        <div className="terminal-panel">
+          <div className="panel-header">
+            <span>ORDER FLOW / RECENT TRADES</span>
+            <span className="text-muted">{txList.length} records</span>
+          </div>
+          <div className="panel-content" style={{ maxHeight: '180px', overflowY: 'auto' }}>
+            {txList.length === 0 ? (
+              <div className="text-center text-muted" style={{ padding: '16px' }}>
+                No recent trades...
+              </div>
+            ) : (
+              <table className="signal-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Side</th>
+                    <th>Price</th>
+                    <th>Size</th>
+                    <th>USDC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {txList.slice(0, 15).map((tx, i) => (
+                    <tr key={i}>
+                      <td className="text-muted">{tx.time}</td>
+                      <td className={tx.side === 'BUY' || tx.side === 'UP' ? 'text-green' : 'text-red'}>
+                        {tx.side} {tx.outcome && <span className="text-muted">({tx.outcome})</span>}
+                      </td>
+                      <td className="tabular">{formatPrice(tx.price)}</td>
+                      <td className="tabular">{formatNumber(tx.size, 2)}</td>
+                      <td className="tabular text-cyan">${formatNumber(tx.usdcSize || (tx.price * tx.size), 2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // POSITIONS PANEL
+    // ========================================
+    function PositionsPanel({ positions }) {
+      const up = positions?.UP || { qty: 0, avg_price: 0, cost: 0, pnl: 0 };
+      const down = positions?.DOWN || { qty: 0, avg_price: 0, cost: 0, pnl: 0 };
+
+      return (
+        <div className="terminal-panel">
+          <div className="panel-header">CURRENT POSITIONS</div>
+          <div className="panel-content">
+            <div className="data-grid cols-2" style={{ marginBottom: '8px' }}>
+              <div className="data-cell">
+                <div className="data-label">▲ UP (YES)</div>
+                <div className="flex justify-between">
+                  <span className="text-green">{formatNumber(up.qty, 0)} @ {formatPrice(up.avg_price)}</span>
+                  <span className={up.pnl >= 0 ? 'text-green' : 'text-red'}>P&L: ${formatNumber(up.pnl)}</span>
+                </div>
+              </div>
+              <div className="data-cell">
+                <div className="data-label">▼ DOWN (NO)</div>
+                <div className="flex justify-between">
+                  <span className="text-red">{formatNumber(down.qty, 0)} @ {formatPrice(down.avg_price)}</span>
+                  <span className={down.pnl >= 0 ? 'text-green' : 'text-red'}>P&L: ${formatNumber(down.pnl)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-between text-xs text-muted">
+              <span>Hedged Pairs: {Math.min(up.qty, down.qty)}</span>
+              <span>Total Cost: ${formatNumber(up.cost + down.cost)}</span>
+              <span>Net P&L: <span className={(up.pnl + down.pnl) >= 0 ? 'text-green' : 'text-red'}>${formatNumber(up.pnl + down.pnl)}</span></span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // STATS FOOTER
+    // ========================================
+    function StatsFooter({ stats, status }) {
+      const s = stats || {};
+
+      return (
+        <div className="terminal-panel">
+          <div className="stats-bar">
+            <div className="stat-item">
+              <div className={`status-dot ${status !== 'connected' ? 'disconnected' : ''}`} />
+              <span className="stat-value uppercase">{status}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">USDC:</span>
+              <span className="stat-value text-green">${formatNumber(s.usdc_balance)}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Uptime:</span>
+              <span className="stat-value">{formatUptime(s.uptime)}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Books:</span>
+              <span className="stat-value">{s.book_updates || 0}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Intents:</span>
+              <span className="stat-value">{(s.intents_fullset || 0) + (s.intents_single_leg || 0)}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Cycles:</span>
+              <span className="stat-value">{s.active_cycles || 0}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Wallet:</span>
+              <span className="stat-value text-cyan">{s.wallet?.slice(0, 6)}...{s.wallet?.slice(-4)}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // HEADER
+    // ========================================
+    function Header({ timestamp, markets }) {
+      const activeCount = markets ? Object.values(markets).filter(m => m.active).length : 0;
+
+      return (
+        <div className="flex justify-between items-center" style={{ marginBottom: '12px', padding: '0 4px' }}>
+          <div className="flex items-center gap-2">
+            <span className="text-cyan font-bold glow-cyan" style={{ fontSize: '1.2rem', letterSpacing: '0.15em' }}>
+              POLYMARKET ARB TERMINAL
+            </span>
+            <span className="text-muted text-xs">v2.0</span>
+          </div>
+          <div className="flex items-center gap-4 text-xs">
+            <span className="text-cyan">{activeCount}/4 MARKETS</span>
+            <span className="text-muted tabular">{timestamp || '—'}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // LOGIN PANEL
+    // ========================================
+    function LoginPanel({ onLogin }) {
+      const [token, setToken] = useState('');
+      const [host, setHost] = useState(localStorage.getItem('api_host') || `${window.location.hostname}:8080`);
+      const [error, setError] = useState('');
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        localStorage.setItem('api_host', host);
+        try {
+          const resp = await fetch(`http://${host}/api/auth/verify`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (resp.ok) {
+            localStorage.setItem('dashboard_token', token);
+            onLogin(token);
+          } else {
+            setError('Invalid token');
+          }
+        } catch (err) {
+          setError('Connection failed: ' + err.message);
+        }
+      };
+
+      return (
+        <div className="scanlines" style={{ minHeight: '100vh', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="terminal-panel" style={{ maxWidth: '400px', width: '100%' }}>
+            <div className="panel-header">AUTHENTICATION REQUIRED</div>
+            <div className="panel-content">
+              <form onSubmit={handleSubmit}>
+                <div style={{ marginBottom: '12px' }}>
+                  <label className="data-label" style={{ display: 'block', marginBottom: '6px' }}>API HOST</label>
+                  <input type="text" value={host} onChange={(e) => setHost(e.target.value)}
+                    style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontFamily: 'inherit' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                  <label className="data-label" style={{ display: 'block', marginBottom: '6px' }}>DASHBOARD TOKEN</label>
+                  <input type="password" value={token} onChange={(e) => setToken(e.target.value)}
+                    style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--neon-cyan)', color: 'var(--text-primary)', fontFamily: 'inherit' }}
+                  />
+                </div>
+                {error && <div className="text-red" style={{ marginBottom: '12px', fontSize: '0.75rem' }}>{error}</div>}
+                <button type="submit" style={{ width: '100%', padding: '10px', background: 'transparent', border: '1px solid var(--neon-cyan)', color: 'var(--neon-cyan)', fontFamily: 'inherit', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  AUTHENTICATE
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // MAIN DASHBOARD
+    // ========================================
+    function Dashboard({ token }) {
+      const API_HOST = localStorage.getItem('api_host') || `${window.location.hostname}:8080`;
+      const wsUrl = useMemo(() => `ws://${API_HOST}/ws?token=${encodeURIComponent(token)}`, [token]);
+      const { data, status } = useWebSocket(wsUrl);
+
+      const [selectedAsset, setSelectedAsset] = useState('BTC');
+
+      return (
+        <div className="scanlines" style={{ minHeight: '100vh', padding: '12px' }}>
+          <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            <Header timestamp={data?.timestamp} markets={data?.markets} />
+
+            {/* Countdown Timer */}
+            <CountdownTimer roundData={data?.round} />
+
+            {/* 4个市场卡片同时显示关键指标 */}
+            <MarketCardsGrid
+              markets={data?.markets}
+              prices={data?.prices}
+              selected={selectedAsset}
+              onSelect={setSelectedAsset}
+              roundLocked={data?.round?.locked}
+            />
+
+            {/* 选中市场的订单簿详情 */}
+            <OrderbookDetail
+              asset={selectedAsset}
+              marketData={data?.markets?.[selectedAsset]}
+              orderbook={data?.orderbooks?.[selectedAsset]}
+            />
+
+            {/* Strategy Info */}
+            <StrategyInfoPanel />
+
+            {/* Two-column: Signals + Positions */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <SignalsPanel signals={data?.signals} selectedAsset={selectedAsset} />
+              <PositionsPanel positions={data?.positions} />
+            </div>
+
+            {/* Order Flow */}
+            <TransactionsPanel transactions={data?.transactions} />
+
+            {/* Stats Footer */}
+            <StatsFooter stats={data?.stats} status={status} />
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // APP
+    // ========================================
+    function App() {
+      const [token, setToken] = useState(localStorage.getItem('dashboard_token') || new URLSearchParams(window.location.search).get('token') || '');
+      const [authenticated, setAuthenticated] = useState(false);
+      const [checking, setChecking] = useState(true);
+
+      useEffect(() => {
+        async function checkAuth() {
+          if (!token) { setChecking(false); return; }
+          const API_HOST = localStorage.getItem('api_host') || `${window.location.hostname}:8080`;
+          try {
+            const resp = await fetch(`http://${API_HOST}/api/auth/verify`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resp.ok) setAuthenticated(true);
+          } catch (err) {}
+          setChecking(false);
+        }
+        checkAuth();
+      }, [token]);
+
+      if (checking) {
+        return (
+          <div className="scanlines" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="text-cyan glow-cyan">INITIALIZING...</div>
+          </div>
+        );
+      }
+
+      if (!authenticated) {
+        return <LoginPanel onLogin={(t) => { setToken(t); setAuthenticated(true); }} />;
+      }
+
+      return <Dashboard token={token} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

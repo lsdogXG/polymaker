@@ -1,0 +1,437 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   CRT TERMINAL EFFECTS
+   ======================================== */
+
+:root {
+  --bg-primary: #05070A;
+  --bg-secondary: #0B0F14;
+  --neon-cyan: #47D7FF;
+  --neon-green: #39FF14;
+  --neon-red: #FF4D4D;
+  --text-secondary: #7F8A96;
+  --text-primary: #E6EEF7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', 'Menlo', 'Consolas', monospace;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+/* Scanline overlay */
+.scanlines::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+}
+
+/* Noise overlay */
+.noise::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Vignette effect */
+.vignette::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9997;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 60%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+}
+
+/* ========================================
+   TERMINAL PANEL COMPONENTS
+   ======================================== */
+
+.terminal-panel {
+  background: rgba(5, 7, 10, 0.95);
+  border: 1px solid var(--neon-cyan);
+  box-shadow:
+    0 0 10px rgba(71, 215, 255, 0.3),
+    0 0 20px rgba(71, 215, 255, 0.1),
+    inset 0 0 30px rgba(71, 215, 255, 0.05);
+  position: relative;
+}
+
+.terminal-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 1px solid rgba(71, 215, 255, 0.2);
+  pointer-events: none;
+}
+
+.panel-header {
+  color: var(--neon-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid rgba(71, 215, 255, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panel-header::before,
+.panel-header::after {
+  content: "==";
+  color: rgba(71, 215, 255, 0.5);
+}
+
+/* ========================================
+   HUD DECORATIONS
+   ======================================== */
+
+.hud-decoration {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  padding: 8px 4px;
+  border-left: 1px solid rgba(71, 215, 255, 0.2);
+}
+
+.hud-tick {
+  width: 100%;
+  height: 2px;
+  background: rgba(71, 215, 255, 0.4);
+}
+
+.hud-tick.active {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 4px var(--neon-cyan);
+}
+
+/* ========================================
+   POSITION BARS
+   ======================================== */
+
+.position-bar {
+  height: 24px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.position-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease-out;
+  position: relative;
+}
+
+.position-bar-fill.up {
+  background: linear-gradient(90deg, rgba(57, 255, 20, 0.3) 0%, rgba(57, 255, 20, 0.6) 100%);
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+}
+
+.position-bar-fill.down {
+  background: linear-gradient(90deg, rgba(255, 77, 77, 0.3) 0%, rgba(255, 77, 77, 0.6) 100%);
+  box-shadow: 0 0 10px rgba(255, 77, 77, 0.3);
+}
+
+/* Animated stripes in bars */
+.position-bar-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 4px,
+    rgba(255, 255, 255, 0.05) 4px,
+    rgba(255, 255, 255, 0.05) 8px
+  );
+  animation: barFlow 2s linear infinite;
+}
+
+@keyframes barFlow {
+  0% { transform: translateX(-8px); }
+  100% { transform: translateX(0px); }
+}
+
+/* ========================================
+   DATA GRID / TABLE
+   ======================================== */
+
+.data-grid {
+  display: grid;
+  gap: 1px;
+  background: rgba(71, 215, 255, 0.1);
+}
+
+.data-cell {
+  background: var(--bg-primary);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.data-label {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+}
+
+.data-value {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.data-value.positive {
+  color: var(--neon-green);
+  text-shadow: 0 0 8px rgba(57, 255, 20, 0.5);
+}
+
+.data-value.negative {
+  color: var(--neon-red);
+  text-shadow: 0 0 8px rgba(255, 77, 77, 0.5);
+}
+
+/* ========================================
+   TRANSACTIONS TABLE
+   ======================================== */
+
+.tx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.tx-table th {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid rgba(71, 215, 255, 0.2);
+}
+
+.tx-table th:last-child,
+.tx-table td:last-child {
+  text-align: right;
+}
+
+.tx-table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid rgba(71, 215, 255, 0.05);
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-table tr:hover td {
+  background: rgba(71, 215, 255, 0.05);
+}
+
+.tx-hash {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+/* Side arrows */
+.side-up {
+  color: var(--neon-green);
+}
+
+.side-up::before {
+  content: "▲ ";
+}
+
+.side-down {
+  color: var(--neon-red);
+}
+
+.side-down::before {
+  content: "▼ ";
+}
+
+/* ========================================
+   HEAT METER / FILL INDICATOR
+   ======================================== */
+
+.heat-meter {
+  height: 16px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(71, 215, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+}
+
+.heat-segment {
+  flex: 1;
+  border-right: 1px solid rgba(71, 215, 255, 0.1);
+  transition: background 0.2s ease;
+}
+
+.heat-segment:last-child {
+  border-right: none;
+}
+
+.heat-segment.active {
+  background: rgba(71, 215, 255, 0.4);
+}
+
+.heat-segment.hot {
+  background: rgba(57, 255, 20, 0.4);
+}
+
+.heat-segment.cold {
+  background: rgba(255, 77, 77, 0.4);
+}
+
+/* ========================================
+   FOOTER STATS BAR
+   ======================================== */
+
+.stats-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid rgba(71, 215, 255, 0.3);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat-label {
+  color: rgba(71, 215, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========================================
+   BLINKING CURSOR / STATUS
+   ======================================== */
+
+.blink {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  box-shadow: 0 0 6px var(--neon-green);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(71, 215, 255, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 215, 255, 0.5);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.text-cyan { color: var(--neon-cyan); }
+.text-green { color: var(--neon-green); }
+.text-red { color: var(--neon-red); }
+.text-muted { color: var(--text-secondary); }
+
+.glow-cyan { text-shadow: 0 0 10px var(--neon-cyan); }
+.glow-green { text-shadow: 0 0 10px var(--neon-green); }
+.glow-red { text-shadow: 0 0 10px var(--neon-red); }
+
+.tabular { font-variant-numeric: tabular-nums; }
+.uppercase { text-transform: uppercase; }
+.tracking-wide { letter-spacing: 0.1em; }

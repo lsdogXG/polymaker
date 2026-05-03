@@ -1,0 +1,39 @@
+[Unit]
+Description=Polymaker Trading Bot
+Documentation=https://github.com/polymaker
+After=network-online.target mongod.service
+Wants=network-online.target
+Requires=mongod.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/admin/Polymaker
+Environment=PATH=/home/admin/Polymaker/.venv/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/home/admin/Polymaker/.env
+
+ExecStart=/home/admin/Polymaker/.venv/bin/python -m app.main
+ExecStop=/bin/kill -SIGTERM $MAINPID
+
+# Restart policy (conservative)
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Logging
+StandardOutput=append:/var/log/polymaker/polymaker.log
+StandardError=append:/var/log/polymaker/polymaker.log
+
+# Security hardening (even for root)
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/home/admin/Polymaker/logs /var/log/polymaker /tmp
+
+# Resource limits
+LimitNOFILE=65535
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

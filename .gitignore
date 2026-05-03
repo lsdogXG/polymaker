@@ -1,0 +1,27 @@
+__pycache__/
+*.pyc
+.env
+.env.local
+.venv/
+venv/
+.idea/
+.pytest_cache/
+.DS_Store
+node_modules/
+.next/
+dist/
+build/
+
+# 日志和数据
+logs/
+*.log
+data/*.db
+data/*.csv
+
+# Frontend build
+frontend/dist/
+frontend/.vite/
+
+# 真实凭证
+*.real.env
+config.real.json

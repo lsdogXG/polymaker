@@ -1,0 +1,10 @@
+httpx
+motor
+pymongo
+py-clob-client
+python-dotenv
+websockets
+pytest
+pytest-asyncio
+fastapi
+uvicorn[standard]
